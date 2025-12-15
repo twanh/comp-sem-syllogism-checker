@@ -31,10 +31,7 @@ def main() -> int:
     # exists x1 [ plant.n.02(x1) & NOT  exists [x2 x3 x4][ be.v.01(x2) & Theme(x2, x1) & Time(x2, x3) & Co-Theme(x2, x4) & time.n.08(x3) &  x3 = now & daisy.n.01(x4)]]
 
 
-
-
-
-        return 0
+    return 0
 
 
 if __name__ == "__main__":
