@@ -34,5 +34,35 @@ def main() -> int:
     return 0
 
 
+def drs2fol(drs):
+  drs_tokens = drs.split()
+  fol_tokens = []
+  var_exist = 1
+  box_counter = 0
+  for token in drs_tokens:
+    if token[0].islower():
+      fol_tokens.append(token + "(x"+ str(var_exist) +")")
+      var_exist += 1
+    if token == "NEGATION":
+      fol_tokens.append("NOT")
+    if token[0].isupper() and token[1].islower():
+      fol_tokens.append(token)
+    if token[-1].isnumeric() and not token[0] == "<" and (token[0] == "-" or token[0] == "+"):
+      if token[0] == "-":
+        fol_tokens[-1] = fol_tokens[-1] + "(x"+ str(var_exist-int(token[-1])) +")"
+      elif token[0] == "+":
+        fol_tokens[-1] = fol_tokens[-1] + "(x"+ str(var_exist+int(token[-1])) +")"
+        var_exist += 1
+    if token[0] == "<":
+      fol_tokens.append("[")
+      box_counter += 1
+
+  fol_tokens.append("]"*box_counter)
+
+
+  print(fol_tokens)
+
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
