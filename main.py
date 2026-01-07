@@ -1,4 +1,5 @@
 import argparse
+import re
 from transformers import AutoTokenizer, T5ForConditionalGeneration
 
 def main() -> int:
@@ -34,33 +35,86 @@ def main() -> int:
     return 0
 
 
+def separators(token):
+  match token:
+    case "NEGATION":
+      return "NOT"
+    case "CONJUNCTION":
+      return "CON"
+    case "EXPLANATION":
+      return "" #?
+    case "CONTINUATION":
+      return "" #?  
+
+def roles(token, var, var_step):
+  match token:
+    case "Agent":
+      return "Agent(x" + str(var_step) + ", x" + str(var) + ")"
+    case "Theme":
+      return "Theme(x" + str(var_step) + ", x" + str(var) + ")"
+    case "Patient":
+      return "Patient(x" + str(var_step) + ", x" + str(var) + ")"
+    case "Co-Theme":
+      return "Co-Theme(x" + str(var_step) + ", x" + str(var) + ")"
+
 def drs2fol(drs):
   drs_tokens = drs.split()
   fol_tokens = []
-  var_exist = 1
+  var_count = len([x for x in drs_tokens if x[0].islower() and x[-1].isnumeric()])
+  print(var_count)
+  var_step = 0
   box_counter = 0
-  for token in drs_tokens:
-    if token[0].islower():
-      fol_tokens.append(token + "(x"+ str(var_exist) +")")
-      var_exist += 1
-    if token == "NEGATION":
-      fol_tokens.append("NOT")
-    if token[0].isupper() and token[1].islower():
-      fol_tokens.append(token)
-    if token[-1].isnumeric() and not token[0] == "<" and (token[0] == "-" or token[0] == "+"):
-      if token[0] == "-":
-        fol_tokens[-1] = fol_tokens[-1] + "(x"+ str(var_exist-int(token[-1])) +")"
-      elif token[0] == "+":
-        fol_tokens[-1] = fol_tokens[-1] + "(x"+ str(var_exist+int(token[-1])) +")"
-        var_exist += 1
-    if token[0] == "<":
+  for i, token in enumerate(drs_tokens):
+    if token[0].islower() and token[-1].isnumeric():
+      var_step += 1
+      fol_tokens.append("exists")
+      prev_token = drs_tokens[i-1]
+      if prev_token == "<1":
+        fol_tokens.append("[")
+        fol_tokens.append("<1")
+        fol_tokens.append("]")
+      else:
+        fol_tokens.append("x"+ str(var_step))
       fol_tokens.append("[")
       box_counter += 1
-
+      fol_tokens.append(token + "(x"+ str(var_step) + ")")
+    if token[0] in ["=", "≠", "≈", "≤", "≥"]:
+      fol_tokens.append(token)
+    if token[0] in ["-", "+"]:
+      continue
+    if token in ["NEGATION", "CONJUNCTION", "EXPLANATION", "CONTINUATION"]:
+      fol_tokens.append("&")
+      fol_tokens.append(separators(token))
+    if token[0] in ["<", ">"] and token [1:].isnumeric():
+      continue
+    if token in ["Theme", "Agent", "Patient", "Co-Theme"]:
+      drs_var = drs_tokens[i+1]
+      var = var_step + int(drs_var[-1])
+      fol_tokens.append(roles(token, var, var_step))
   fol_tokens.append("]"*box_counter)
+  print(fol_tokens)
 
+  find_var_re = r"\b(x\d+)\b"
+  detect_var = []
+  for i, token in enumerate(fol_tokens[::-1]):
+    if token == "<1":
+      reverse_index = len(fol_tokens)-i
+      index = reverse_index-1
+      for j in range(-5, 6):
+        if fol_tokens[index+j] == "<1":
+          index = index+j
+      fol_tokens.pop(index)
+      detect_var = sorted(set(detect_var), key=lambda v: int(v[1:]))
+      for var in detect_var[::-1]:
+          fol_tokens.insert(index, var)
+      detect_var = []
+    found_vars = re.findall(find_var_re, token)
+    if found_vars:
+      for var in found_vars:
+        detect_var.append(var)
 
   print(fol_tokens)
+  return " ".join(fol_tokens)
 
 
 
