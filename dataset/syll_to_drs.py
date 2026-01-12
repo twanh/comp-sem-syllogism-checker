@@ -1,3 +1,4 @@
+import sys
 import argparse
 import json
 
@@ -25,6 +26,15 @@ def main() -> int:
         help='Path to the output file to save DRS representations.',
     )
 
+    parser.add_argument(
+        '-l',
+        '--log_level',
+        type=str,
+        default='INFO',
+        choices=[
+        'TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR',]
+    )
+
     args = parser.parse_args()
 
     # Initialize the tokenizer and model
@@ -33,17 +43,29 @@ def main() -> int:
     )
     model = T5ForConditionalGeneration.from_pretrained("XiaoZhang98/byT5-DRS")
 
+
+    # Set the logging level
+    logger.remove()
+    logger.add(
+        sys.stderr,
+        level=args.log_level,
+    )
+
+    logger.info("Model and tokenizer loaded successfully.")
+
     # Load input file
-    with open(args.inf_file, 'r') as f:
+    with open(args.in_file, 'r') as f:
         data = json.load(f)
 
     output_data = []
+
+    logger.info(f"Processing {len(data)} syllogisms.")
 
     for row in tqdm.tqdm(data, desc="Processing syllogisms"):
 
         syllogism = row['syllogism']
 
-        logger.info(f"Processing syllogism: {syllogism}")
+        logger.debug(f"Processing syllogism: {syllogism}")
 
         # Tokenize input syllogism
         x = tokenizer(
@@ -61,7 +83,7 @@ def main() -> int:
             output[0], skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
 
-        logger.info(f"Generated DRS representation: {drs_representation}")
+        logger.debug(f"Generated DRS representation: {drs_representation}")
 
         output_data.append({
             'syllogism': syllogism,
